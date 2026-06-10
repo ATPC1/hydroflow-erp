@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HydroFlow ERP — A-One Waterart's Billing System</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Lock Screen Overlay -->
+  <div id="lock-screen">
+    <div class="lock-container glass-panel">
+      <div class="lock-logo">HydroFlow ERP</div>
+      <div class="text-secondary mb-4">A-One Waterart's</div>
+      <div class="text-muted small">Enter 4-Digit Owner PIN</div>
+      
+      <div class="pin-display">
+        <div class="pin-dot" id="dot-0"></div>
+        <div class="pin-dot" id="dot-1"></div>
+        <div class="pin-dot" id="dot-2"></div>
+        <div class="pin-dot" id="dot-3"></div>
+      </div>
+      
+      <div class="numpad">
+        <div class="numpad-btn" onclick="pressKey('1')">1</div>
+        <div class="numpad-btn" onclick="pressKey('2')">2</div>
+        <div class="numpad-btn" onclick="pressKey('3')">3</div>
+        <div class="numpad-btn" onclick="pressKey('4')">4</div>
+        <div class="numpad-btn" onclick="pressKey('5')">5</div>
+        <div class="numpad-btn" onclick="pressKey('6')">6</div>
+        <div class="numpad-btn" onclick="pressKey('7')">7</div>
+        <div class="numpad-btn" onclick="pressKey('8')">8</div>
+        <div class="numpad-btn" onclick="pressKey('9')">9</div>
+        <div class="numpad-btn btn-action" onclick="pressAction('clear')">CLR</div>
+        <div class="numpad-btn" onclick="pressKey('0')">0</div>
+        <div class="numpad-btn btn-action" onclick="pressAction('back')">DEL</div>
+      </div>
+      
+      <div class="mt-4 text-muted small" style="opacity: 0.6;">
+        Default PIN: 1234
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Navigation -->
+  <nav class="sidebar">
+    <div class="mb-4">
+      <h4 class="fw-bold mb-0 text-white" style="letter-spacing: 0.5px;">HydroFlow ERP</h4>
+      <span class="text-muted small">A-One Waterart's</span>
+    </div>
+    
+    <div class="flex-grow-1">
+      <a href="#" class="nav-link-custom active" data-target="pos-section" id="nav-pos">
+        <i data-lucide="shopping-cart"></i>
+        <span>POS Terminal</span>
+      </a>
+      <a href="#" class="nav-link-custom" data-target="inventory-section" id="nav-inventory">
+        <i data-lucide="package"></i>
+        <span>Inventory Control</span>
+        <span id="low-stock-badge-container"></span>
+      </a>
+      <a href="#" class="nav-link-custom" data-target="dashboard-section" id="nav-dashboard">
+        <i data-lucide="bar-chart-2"></i>
+        <span>Analytics Logs</span>
+      </a>
+      <a href="#" class="nav-link-custom" data-target="settings-section" id="nav-settings">
+        <i data-lucide="settings"></i>
+        <span>ERP Settings</span>
+      </a>
+    </div>
+    
+    <div class="mt-auto">
+      <button class="btn btn-outline-danger w-100 btn-sm d-flex align-items-center justify-content-center gap-2 border-0" onclick="lockConsole()">
+        <i data-lucide="lock"></i>
+        <span>Lock System</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="main-content">
+    
+    <!-- A. POS Terminal Section -->
+    <section id="pos-section" class="spa-section">
+      <div class="row g-4">
+        
+        <!-- Cart & Products List (Left Panel) -->
+        <div class="col-lg-8">
+          <div class="glass-panel p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                <i data-lucide="shopping-cart" class="text-cyan"></i> Billing Cart
+              </h5>
+              <span class="text-muted small" id="scanner-indicator">
+                <i data-lucide="qr-code" class="text-success pulse-badge border-0" style="width:12px;height:12px;"></i> Scanner Active
+              </span>
+            </div>
+            
+            <!-- Product Search and Scanner input -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-8 position-relative">
+                <label class="form-label text-secondary small fw-medium">Search Product (Type or Select)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-transparent border-end-0 text-muted" style="border: 1px solid var(--glass-border); border-top-left-radius: 8px; border-bottom-left-radius: 8px;">
+                    <i data-lucide="search" style="width: 18px;"></i>
+                  </span>
+                  <input type="text" id="product-search-input" class="form-control form-glass-input border-start-0" placeholder="Type product name, HSN or scan barcode..." autocomplete="off">
+                </div>
+                <div id="product-suggestions" class="suggestions-list" style="display: none;"></div>
+              </div>
+              
+              <div class="col-md-4">
+                <label class="form-label text-secondary small fw-medium">Scan Input (Manual Scanner Hook)</label>
+                <input type="text" id="manual-scanner-input" class="form-control form-glass-input" placeholder="Scan here for fallback...">
+              </div>
+            </div>
+            
+            <!-- Cart Table -->
+            <div class="table-responsive cart-scroll">
+              <table class="table-custom">
+                <thead>
+                  <tr>
+                    <th>Product & HSN</th>
+                    <th width="120">Price (₹)</th>
+                    <th width="100">Qty</th>
+                    <th width="100">GST %</th>
+                    <th width="120">Total (₹)</th>
+                    <th width="60"></th>
+                  </tr>
+                </thead>
+                <tbody id="cart-items-body">
+                  <!-- Dynamic rows added here -->
+                  <tr id="empty-cart-row">
+                    <td colspan="6" class="text-center text-muted py-5">
+                      <i data-lucide="shopping-bag" style="width: 48px; height: 48px;" class="mb-3 d-block mx-auto opacity-50"></i>
+                      Cart is empty. Search products above or scan item barcode to start billing.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Customer Details & Tax Calculations (Right Panel) -->
+        <div class="col-lg-4">
+          <div class="glass-panel p-4 h-100 d-flex flex-column">
+            <h5 class="fw-bold mb-4 text-white d-flex align-items-center gap-2">
+              <i data-lucide="user" class="text-cyan"></i> Customer & Details
+            </h5>
+            
+            <!-- Customer Form -->
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-medium">Customer Name</label>
+              <input type="text" id="cust-name" class="form-control form-glass-input" placeholder="e.g. John Doe">
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-medium">Customer Address</label>
+              <textarea id="cust-address" class="form-control form-glass-input" rows="2" placeholder="e.g. 9th Floor B- 913 Lodha Supremus, Thane"></textarea>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-medium">GSTIN (Optional)</label>
+              <input type="text" id="cust-gstin" class="form-control form-glass-input text-uppercase" maxlength="15" placeholder="15-digit GSTIN (e.g. 24...)">
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-medium">State / POS Code</label>
+              <select id="cust-state" class="form-select form-glass-input">
+                <option value="27">Maharashtra (27) - Local</option>
+                <option value="24">Gujarat (24)</option>
+                <option value="09">Uttar Pradesh (09)</option>
+                <option value="07">Delhi (07)</option>
+                <option value="19">West Bengal (19)</option>
+                <option value="29">Karnataka (29)</option>
+                <option value="33">Tamil Nadu (33)</option>
+                <option value="36">Telangana (36)</option>
+                <option value="03">Punjab (03)</option>
+                <option value="08">Rajasthan (08)</option>
+                <option value="10">Bihar (10)</option>
+                <option value="23">Madhya Pradesh (23)</option>
+              </select>
+            </div>
+            
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label text-secondary small fw-medium">Mobile Number</label>
+                <input type="text" id="cust-mobile" class="form-control form-glass-input" placeholder="10-digit number">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label text-secondary small fw-medium">Email Address</label>
+                <input type="email" id="cust-email" class="form-control form-glass-input" placeholder="billing@domain.com">
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-medium">Transportation Charge (₹)</label>
+              <input type="number" id="transport-cost" class="form-control form-glass-input" value="0" min="0" placeholder="Allocated proportionally">
+            </div>
+            
+            <!-- Calculations Breakdown -->
+            <div class="glass-card p-3 my-3">
+              <div class="d-flex justify-content-between mb-2 small text-secondary">
+                <span>Items Subtotal:</span>
+                <span id="calc-subtotal">₹0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2 small text-secondary">
+                <span>Transportation:</span>
+                <span id="calc-transport">₹0.00</span>
+              </div>
+              <div id="tax-breakdown-rows">
+                <!-- CGST/SGST or IGST injected here -->
+              </div>
+              <hr class="my-2" style="border-top: 1px solid rgba(255, 255, 255, 0.15)">
+              <div class="d-flex justify-content-between align-items-center text-white">
+                <span class="fw-bold">Total Invoice Value:</span>
+                <span class="fs-4 fw-bold text-cyan" id="calc-total">₹0.00</span>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <label class="form-label text-secondary small fw-medium">Payment Mode</label>
+              <div class="d-flex gap-2">
+                <input type="radio" class="btn-check" name="payment-mode" id="pay-cash" value="Cash" checked>
+                <label class="btn btn-outline-secondary flex-grow-1 form-glass-input d-flex align-items-center justify-content-center border-1" for="pay-cash">Cash</label>
+                
+                <input type="radio" class="btn-check" name="payment-mode" id="pay-upi" value="UPI">
+                <label class="btn btn-outline-secondary flex-grow-1 form-glass-input d-flex align-items-center justify-content-center border-1" for="pay-upi">UPI</label>
+                
+                <input type="radio" class="btn-check" name="payment-mode" id="pay-card" value="Card">
+                <label class="btn btn-outline-secondary flex-grow-1 form-glass-input d-flex align-items-center justify-content-center border-1" for="pay-card">Card</label>
+              </div>
+            </div>
+            
+            <div class="mt-auto d-grid gap-2">
+              <button class="btn btn-glass-primary py-3 d-flex align-items-center justify-content-center gap-2" id="checkout-btn" onclick="processCheckout()">
+                <i data-lucide="printer"></i> Print & Save Invoice
+              </button>
+              <button class="btn btn-glass-secondary btn-sm" onclick="clearCart()">
+                Clear Cart
+              </button>
+            </div>
+            
+          </div>
+        </div>
+        
+      </div>
+    </section>
+
+    <!-- B. Inventory Control Section -->
+    <section id="inventory-section" class="spa-section" style="display: none;">
+      <div class="glass-panel p-4">
+        
+        <!-- Low Stock Alerts Banner Container -->
+        <div id="low-stock-alert-box" class="mb-4" style="display: none;">
+          <div class="alert alert-danger bg-danger bg-opacity-10 border-danger text-light d-flex align-items-center gap-3 rounded-3" role="alert">
+            <i data-lucide="alert-triangle" class="text-danger flex-shrink-0" style="width:24px;height:24px;"></i>
+            <div>
+              <strong>Low Stock warning!</strong> One or more products have less than 5 units remaining in stock. Please restock soon.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+          <div>
+            <h4 class="fw-bold mb-1 text-white">Product Inventory</h4>
+            <p class="text-muted small mb-0">Add, edit, or configure catalog items and track stock levels.</p>
+          </div>
+          
+          <button class="btn btn-glass-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#product-modal" onclick="resetProductForm()">
+            <i data-lucide="plus"></i> Add Product
+          </button>
+        </div>
+        
+        <div class="row g-3 mb-4">
+          <div class="col-md-8">
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0 text-muted" style="border: 1px solid var(--glass-border); border-top-left-radius: 8px; border-bottom-left-radius: 8px;">
+                <i data-lucide="search" style="width: 18px;"></i>
+              </span>
+              <input type="text" id="inventory-search" class="form-control form-glass-input border-start-0" placeholder="Search inventory by name, category, or HSN...">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <select id="inventory-filter" class="form-select form-glass-input">
+              <option value="">All Categories</option>
+              <option value="Pump">Pumps</option>
+              <option value="Fittings">Fittings</option>
+              <option value="Valves">Valves</option>
+              <option value="Pipes">Pipes</option>
+              <option value="Accessories">Accessories</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>HSN Code</th>
+                <th>Base Price</th>
+                <th>Standard GST</th>
+                <th>Stock Units</th>
+                <th width="120" class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+        
+      </div>
+    </section>
+
+    <!-- C. Owner's Analytics Dashboard -->
+    <section id="dashboard-section" class="spa-section" style="display: none;">
+      <!-- KPI widgets -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-4">
+          <div class="glass-panel kpi-card kpi-cyan">
+            <div class="kpi-label">Today's Sales</div>
+            <div class="kpi-value" id="kpi-today-sales">₹0.00</div>
+            <span class="text-muted small" id="kpi-today-count">0 Transactions</span>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <div class="glass-panel kpi-card kpi-indigo">
+            <div class="kpi-label">Lifetime Revenue</div>
+            <div class="kpi-value" id="kpi-total-revenue">₹0.00</div>
+            <span class="text-muted small" id="kpi-total-count">0 Total Invoices</span>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <div class="glass-panel kpi-card kpi-purple">
+            <div class="kpi-label">Low Stock Products</div>
+            <div class="kpi-value text-danger" id="kpi-low-stock">0</div>
+            <span class="text-muted small">Items below 5 units</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Payments Split and Transaction Log -->
+      <div class="row g-4">
+        
+        <!-- Ledger split info -->
+        <div class="col-lg-4">
+          <div class="glass-panel p-4 h-100">
+            <h5 class="fw-bold mb-4 text-white">Payment Mode Ledger</h5>
+            
+            <div class="mb-4">
+              <div class="d-flex justify-content-between mb-1 small text-secondary">
+                <span>Cash Receipts</span>
+                <span id="ledger-cash-val" class="text-white fw-bold">₹0.00</span>
+              </div>
+              <div class="progress" style="height: 10px; background: rgba(255,255,255,0.05);">
+                <div id="ledger-cash-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <div class="d-flex justify-content-between mb-1 small text-secondary">
+                <span>UPI Transactions</span>
+                <span id="ledger-upi-val" class="text-white fw-bold">₹0.00</span>
+              </div>
+              <div class="progress" style="height: 10px; background: rgba(255,255,255,0.05);">
+                <div id="ledger-upi-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <div class="d-flex justify-content-between mb-1 small text-secondary">
+                <span>Card Payments</span>
+                <span id="ledger-card-val" class="text-white fw-bold">₹0.00</span>
+              </div>
+              <div class="progress" style="height: 10px; background: rgba(255,255,255,0.05);">
+                <div id="ledger-card-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+              </div>
+            </div>
+            
+            <div class="glass-card p-3 text-center text-muted small mt-5">
+              Ledger calculations are completed live directly from localized IndexedDB invoice records.
+            </div>
+          </div>
+        </div>
+        
+        <!-- Searchable Invoice Logs -->
+        <div class="col-lg-8">
+          <div class="glass-panel p-4 h-100">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+              <h5 class="fw-bold mb-0 text-white">Invoice Log Registry</h5>
+              <div style="width: 250px;">
+                <input type="text" id="log-search" class="form-control form-glass-input py-1" placeholder="Search customer, invoice #...">
+              </div>
+            </div>
+            
+            <div class="table-responsive" style="max-height: 400px;">
+              <table class="table-custom">
+                <thead>
+                  <tr>
+                    <th>Inv No.</th>
+                    <th>Customer Name</th>
+                    <th>Date</th>
+                    <th>Payment</th>
+                    <th>Total (₹)</th>
+                    <th width="80" class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="invoice-logs-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </section>
+
+    <!-- D. ERP Settings Section -->
+    <section id="settings-section" class="spa-section" style="display: none;">
+      <div class="row g-4">
+        
+        <!-- Business Profile and PIN setup -->
+        <div class="col-md-6">
+          <div class="glass-panel p-4">
+            <h5 class="fw-bold mb-4 text-white d-flex align-items-center gap-2">
+              <i data-lucide="shield-check" class="text-cyan"></i> Security & Owner Configuration
+            </h5>
+            
+            <div class="glass-card p-3 mb-4">
+              <h6 class="fw-bold text-white mb-3">Change Terminal 4-Digit PIN</h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-medium">Current Owner PIN</label>
+                  <input type="password" id="settings-curr-pin" class="form-control form-glass-input" maxlength="4" placeholder="••••">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-medium">New Owner PIN</label>
+                  <input type="password" id="settings-new-pin" class="form-control form-glass-input" maxlength="4" placeholder="••••">
+                </div>
+                <div class="col-12 mt-3">
+                  <button class="btn btn-glass-primary btn-sm" onclick="saveNewPIN()">Update PIN</button>
+                </div>
+              </div>
+            </div>
+            
+            <h5 class="fw-bold mb-4 text-white d-flex align-items-center gap-2 mt-5">
+              <i data-lucide="building" class="text-cyan"></i> Supplier Profile
+            </h5>
+            
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label text-secondary small fw-medium">Supplier Name</label>
+                <input type="text" id="setup-supplier-name" class="form-control form-glass-input" value="A-One Waterart's">
+              </div>
+              
+              <div class="col-md-8">
+                <label class="form-label text-secondary small fw-medium">Supplier GSTIN</label>
+                <input type="text" id="setup-supplier-gstin" class="form-control form-glass-input text-uppercase" value="27AONEW0811A1Z9" maxlength="15">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label text-secondary small fw-medium">State Code</label>
+                <input type="text" id="setup-supplier-state" class="form-control form-glass-input" value="Maharashtra (27)" disabled>
+              </div>
+              
+              <div class="col-12">
+                <label class="form-label text-secondary small fw-medium">Supplier Office Address</label>
+                <textarea id="setup-supplier-addr" class="form-control form-glass-input" rows="2">Sector 3, Vasai East, Palghar, Maharashtra - 401208</textarea>
+              </div>
+              
+              <div class="col-12 mt-3">
+                <button class="btn btn-glass-primary btn-sm" onclick="saveSupplierProfile()">Save Business Profile</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Email Integration and DB Backups -->
+        <div class="col-md-6">
+          <div class="glass-panel p-4 h-100 d-flex flex-column">
+            <h5 class="fw-bold mb-4 text-white d-flex align-items-center gap-2">
+              <i data-lucide="mail" class="text-cyan"></i> Brevo SMTP Email Relay
+            </h5>
+            <p class="text-muted small">Send tax invoice PDF links or attachments in the background dynamically from the client browser.</p>
+            
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-medium">Brevo SMTP API Key</label>
+              <input type="password" id="setup-brevo-key" class="form-control form-glass-input" placeholder="xkeysib-xxxxxxxxxxxx">
+              <div class="form-text text-muted small" style="font-size:0.75rem;">This API key is stored securely in your browser's IndexedDB and is never sent to external servers except Brevo.</div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label text-secondary small fw-medium">Sender Email (Brevo Verified)</label>
+              <input type="email" id="setup-brevo-sender" class="form-control form-glass-input" placeholder="billing@aonewaterarts.com" value="billing@aonewaterarts.com">
+            </div>
+            
+            <div class="mb-4">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="setup-auto-email">
+                <label class="form-check-label text-light small fw-medium" for="setup-auto-email">Auto-email PDF invoice to customer if email is provided</label>
+              </div>
+            </div>
+            
+            <div class="mt-4 pt-4 border-top" style="border-color: rgba(255,255,255,0.08) !important;">
+              <h5 class="fw-bold mb-3 text-white d-flex align-items-center gap-2">
+                <i data-lucide="database" class="text-cyan"></i> Database Backup & Portability
+              </h5>
+              <p class="text-muted small">Since all billing data resides strictly in your browser local cache, perform periodic exports to secure against database clearouts.</p>
+              
+              <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-info btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-2" onclick="exportDatabase()">
+                  <i data-lucide="download" style="width: 16px;"></i> Export JSON Database
+                </button>
+                
+                <button class="btn btn-outline-warning btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-2" onclick="triggerImportFileInput()">
+                  <i data-lucide="upload" style="width: 16px;"></i> Import JSON Database
+                </button>
+                <input type="file" id="db-import-file" style="display: none;" accept=".json" onchange="importDatabase(event)">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </section>
+
+  </main>
+
+  <!-- CRUD Modal for Products -->
+  <div class="modal fade" id="product-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-glass">
+        <div class="modal-header modal-header-glass">
+          <h5 class="modal-title fw-bold text-white" id="product-modal-title">Add New Inventory Item</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="edit-prod-id">
+          
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-medium">Product Name</label>
+            <input type="text" id="prod-name" class="form-control form-glass-input" required placeholder="e.g. Submersible Pump 1.5HP">
+          </div>
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-secondary small fw-medium">Category</label>
+              <select id="prod-category" class="form-select form-glass-input">
+                <option value="Pump">Pump</option>
+                <option value="Fittings">Fittings</option>
+                <option value="Valves">Valves</option>
+                <option value="Pipes">Pipes</option>
+                <option value="Accessories">Accessories</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-secondary small fw-medium">HSN Code</label>
+              <input type="text" id="prod-hsn" class="form-control form-glass-input" required placeholder="e.g. 8413">
+            </div>
+          </div>
+          
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label text-secondary small fw-medium">Base Price (₹)</label>
+              <input type="number" id="prod-price" class="form-control form-glass-input" min="0" step="0.01" required placeholder="0.00">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-secondary small fw-medium">GST Rate (%)</label>
+              <select id="prod-gst" class="form-select form-glass-input">
+                <option value="18">18%</option>
+                <option value="12">12%</option>
+                <option value="5">5%</option>
+                <option value="28">28%</option>
+                <option value="0">0%</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-secondary small fw-medium">Stock Count</label>
+              <input type="number" id="prod-stock" class="form-control form-glass-input" min="0" required placeholder="Units">
+            </div>
+          </div>
+          
+        </div>
+        <div class="modal-footer modal-footer-glass">
+          <button type="button" class="btn btn-glass-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-glass-primary" onclick="saveProduct()">Save Product</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lucide Icon CDN wrapper -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Bootstrap 5 Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Dexie.js (IndexedDB library) -->
+  <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+  <!-- jsPDF & AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  
+  <!-- JavaScript Application Entry -->
+  <script src="app.js"></script>
+</body>
+</html>
