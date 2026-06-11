@@ -42,6 +42,7 @@ const GST_STATE_MAP = {
 
 // Seed Data for initial load
 const SEED_PRODUCTS = [
+  // Existing baseline items
   { name: "Submersible Pump 1.5HP", category: "Pump", hsn: "8413", basePrice: 12500, gstRate: 18, stock: 15 },
   { name: "Monoblock Pump 1HP", category: "Pump", hsn: "8413", basePrice: 8400, gstRate: 18, stock: 8 },
   { name: "Brass Gate Valve 2 inch", category: "Valves", hsn: "8481", basePrice: 1200, gstRate: 18, stock: 4 },
@@ -49,7 +50,30 @@ const SEED_PRODUCTS = [
   { name: "Stainless Steel Coupling 2 inch", category: "Fittings", hsn: "7307", basePrice: 280, gstRate: 18, stock: 3 },
   { name: "Pressure Gauge 0-10 Bar", category: "Accessories", hsn: "9026", basePrice: 950, gstRate: 12, stock: 12 },
   { name: "Control Panel Single Phase", category: "Accessories", hsn: "8537", basePrice: 3200, gstRate: 18, stock: 6 },
-  { name: "Ball Valve PVC 1 inch", category: "Valves", hsn: "8481", basePrice: 180, gstRate: 18, stock: 25 }
+  { name: "Ball Valve PVC 1 inch", category: "Valves", hsn: "8481", basePrice: 180, gstRate: 18, stock: 25 },
+  
+  // Image 1 Items
+  { name: "Jacuzzi Nozzle", category: "Fittings", hsn: "8424", basePrice: 2200, gstRate: 18, stock: 30 },
+  { name: "7.5 HP Jacuzzi pump", category: "Pump", hsn: "8413", basePrice: 38500, gstRate: 18, stock: 5 },
+  { name: "Sand media", category: "Accessories", hsn: "2505", basePrice: 20, gstRate: 18, stock: 2000 },
+  { name: "15 mtr. Swimming pool hose pipe", category: "Pipes", hsn: "9405", basePrice: 6200, gstRate: 18, stock: 10 },
+  { name: "Suction head", category: "Accessories", hsn: "3926", basePrice: 2500, gstRate: 18, stock: 8 },
+  { name: "I ball Swimming pool Nozzle", category: "Fittings", hsn: "8424", basePrice: 750, gstRate: 18, stock: 50 },
+  { name: "Baby pool Umbrella Nozzle 10'×5'", category: "Fittings", hsn: "6603", basePrice: 70000, gstRate: 18, stock: 2 },
+  { name: "18 Watt swimming pool warm white light", category: "Accessories", hsn: "9405", basePrice: 3250, gstRate: 18, stock: 40 },
+  { name: "7kw heat pump", category: "Pump", hsn: "8418", basePrice: 220000, gstRate: 18, stock: 3 },
+
+  // Image 2 Items
+  { name: "9 watt warm white swimming pool in ground", category: "Accessories", hsn: "9505", basePrice: 2250, gstRate: 18, stock: 30 },
+  { name: "Air refuse Nozzle", category: "Fittings", hsn: "8481", basePrice: 3200, gstRate: 18, stock: 15 },
+  { name: "Vacuum Nozzle", category: "Fittings", hsn: "8508", basePrice: 1150, gstRate: 18, stock: 12 },
+  { name: "18 watt warm white jacuzzi light", category: "Accessories", hsn: "9405", basePrice: 2850, gstRate: 18, stock: 20 },
+  { name: "18mm wall brush", category: "Accessories", hsn: "9603", basePrice: 1250, gstRate: 18, stock: 10 },
+  { name: "6 meter pool rod", category: "Accessories", hsn: "7326", basePrice: 1850, gstRate: 18, stock: 8 },
+  { name: "Deep net", category: "Accessories", hsn: "3926", basePrice: 950, gstRate: 18, stock: 15 },
+  { name: "2HP submersible pump", category: "Pump", hsn: "8413", basePrice: 22500, gstRate: 18, stock: 6 },
+  { name: "Drain Cover", category: "Fittings", hsn: "7326", basePrice: 1200, gstRate: 18, stock: 25 },
+  { name: "Swimming pool & baby pool Installation Charges", category: "Accessories", hsn: "9987", basePrice: 85000, gstRate: 18, stock: 99 }
 ];
 
 // Initialize application on load
@@ -71,10 +95,12 @@ async function initDatabase() {
     settings: 'key, value'
   });
 
-  // Verify and seed products
-  const productCount = await db.products.count();
-  if (productCount === 0) {
-    await db.products.bulkAdd(SEED_PRODUCTS);
+  // Verify and seed products incrementally
+  for (const p of SEED_PRODUCTS) {
+    const exists = await db.products.where('name').equals(p.name).first();
+    if (!exists) {
+      await db.products.add(p);
+    }
   }
 
   // Seed default settings
@@ -203,21 +229,26 @@ function lockConsole() {
 // Navigation & Router
 // -----------------------------------------
 function initRouting() {
-  const navLinks = document.querySelectorAll('.nav-link-custom');
+  const navLinks = document.querySelectorAll('.nav-link-custom, .mobile-nav-link');
   const sections = document.querySelectorAll('.spa-section');
 
   navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       
-      // Update active nav state
-      navLinks.forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
-
-      // Swap displayed section
       const targetId = link.getAttribute('data-target');
       currentSection = targetId;
-      
+
+      // Sync active state across desktop sidebar and mobile bottom nav
+      navLinks.forEach(l => {
+        if (l.getAttribute('data-target') === targetId) {
+          l.classList.add('active');
+        } else {
+          l.classList.remove('active');
+        }
+      });
+
+      // Swap displayed section
       sections.forEach(sec => {
         if (sec.id === targetId) {
           sec.style.display = 'block';
@@ -532,38 +563,48 @@ function initGstSelector() {
 // Autocomplete product input
 function initAutocomplete() {
   const searchInput = document.getElementById('product-search-input');
+  const toggleBtn = document.getElementById('toggle-dropdown-btn');
   const suggestionsBox = document.getElementById('product-suggestions');
 
-  searchInput.addEventListener('input', async () => {
-    const query = searchInput.value.trim().toLowerCase();
-    
-    if (query.length === 0) {
-      suggestionsBox.style.display = 'none';
-      return;
-    }
+  // Render suggestion elements
+  async function renderSuggestions(query = '') {
+    const q = query.trim().toLowerCase();
+    let matched;
 
-    // Filter products locally from IndexedDB
-    const matched = await db.products.filter(p => {
-      return p.name.toLowerCase().includes(query) || 
-             p.hsn.includes(query) || 
-             p.category.toLowerCase().includes(query);
-    }).toArray();
+    if (q.length === 0) {
+      // Show ALL products if search field is empty
+      matched = await db.products.toArray();
+    } else {
+      // Filter products locally from IndexedDB
+      matched = await db.products.filter(p => {
+        return p.name.toLowerCase().includes(q) || 
+               p.hsn.includes(q) || 
+               p.category.toLowerCase().includes(q);
+      }).toArray();
+    }
 
     suggestionsBox.innerHTML = '';
     
     if (matched.length > 0) {
       suggestionsBox.style.display = 'block';
-      matched.slice(0, 5).forEach(product => {
+      
+      // Sort alphabetically if showing all
+      if (q.length === 0) {
+        matched.sort((a,b) => a.name.localeCompare(b.name));
+      }
+
+      matched.forEach(product => {
         const item = document.createElement('div');
         item.className = 'suggestion-item';
         item.innerHTML = `
-          <div class="fw-bold">${product.name}</div>
+          <div class="fw-bold text-white">${product.name}</div>
           <div class="small text-muted d-flex justify-content-between">
             <span>HSN: ${product.hsn} | Cat: ${product.category}</span>
             <span class="text-cyan">₹${product.basePrice} (GST ${product.gstRate}%)</span>
           </div>
         `;
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation(); // Avoid event collision
           addToCart(product);
           searchInput.value = '';
           suggestionsBox.style.display = 'none';
@@ -574,11 +615,32 @@ function initAutocomplete() {
       suggestionsBox.style.display = 'block';
       suggestionsBox.innerHTML = '<div class="p-3 text-muted text-center small">No matches found. Try inventory tab.</div>';
     }
+  }
+
+  // Handle typing filtering
+  searchInput.addEventListener('input', () => {
+    renderSuggestions(searchInput.value);
+  });
+
+  // Open dropdown list immediately on click/focus
+  searchInput.addEventListener('focus', () => {
+    renderSuggestions(searchInput.value);
+  });
+
+  // Toggle dropdown on chevron button click
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (suggestionsBox.style.display === 'block') {
+      suggestionsBox.style.display = 'none';
+    } else {
+      renderSuggestions(searchInput.value);
+      searchInput.focus();
+    }
   });
 
   // Close suggestion list on click outside
   document.addEventListener('click', (e) => {
-    if (e.target !== searchInput) {
+    if (e.target !== searchInput && e.target !== toggleBtn && !toggleBtn.contains(e.target)) {
       suggestionsBox.style.display = 'none';
     }
   });
@@ -643,15 +705,22 @@ async function refreshInventoryTable() {
     });
   }
 
-  // Handle Low Stock Badges
+  // Handle Low Stock Badges (Syncing desktop sidebar and mobile bottom nav)
   const badgeContainer = document.getElementById('low-stock-badge-container');
+  const mobBadgeContainer = document.getElementById('mob-low-stock-badge-container');
   const alertBox = document.getElementById('low-stock-alert-box');
   
   if (lowStockCount > 0) {
     badgeContainer.innerHTML = `<span class="pulse-badge"></span>`;
+    if (mobBadgeContainer) {
+      mobBadgeContainer.innerHTML = `<span class="pulse-badge" style="margin-left: 2px; position: absolute; top: 4px; right: 22%;"></span>`;
+    }
     if (alertBox) alertBox.style.display = 'block';
   } else {
     badgeContainer.innerHTML = '';
+    if (mobBadgeContainer) {
+      mobBadgeContainer.innerHTML = '';
+    }
     if (alertBox) alertBox.style.display = 'none';
   }
 

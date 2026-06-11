@@ -105,10 +105,13 @@
               <div class="col-md-8 position-relative">
                 <label class="form-label text-secondary small fw-medium">Search Product (Type or Select)</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-transparent border-end-0 text-muted" style="border: 1px solid var(--glass-border); border-top-left-radius: 8px; border-bottom-left-radius: 8px;">
-                    <i data-lucide="search" style="width: 18px;"></i>
+                  <span class="input-group-text bg-transparent border-end-0 text-muted" style="border: 1px solid var(--glass-border); border-top-left-radius: 8px; border-bottom-left-radius: 8px; padding-right: 8px; padding-left: 12px;">
+                    <i data-lucide="search" style="width: 16px;"></i>
                   </span>
-                  <input type="text" id="product-search-input" class="form-control form-glass-input border-start-0" placeholder="Type product name, HSN or scan barcode..." autocomplete="off">
+                  <input type="text" id="product-search-input" class="form-control form-glass-input border-start-0 border-end-0" placeholder="Select or search product..." autocomplete="off">
+                  <span class="input-group-text bg-transparent border-start-0 text-muted" id="toggle-dropdown-btn" style="border: 1px solid var(--glass-border); border-top-right-radius: 8px; border-bottom-right-radius: 8px; cursor: pointer; padding-right: 12px; padding-left: 8px;">
+                    <i data-lucide="chevron-down" style="width: 16px;"></i>
+                  </span>
                 </div>
                 <div id="product-suggestions" class="suggestions-list" style="display: none;"></div>
               </div>
@@ -597,6 +600,27 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <div class="mobile-nav-bar d-lg-none glass-panel">
+    <a href="#" class="mobile-nav-link active" data-target="pos-section" id="mob-nav-pos">
+      <i data-lucide="shopping-cart"></i>
+      <span>POS</span>
+    </a>
+    <a href="#" class="mobile-nav-link" data-target="inventory-section" id="mob-nav-inventory">
+      <i data-lucide="package"></i>
+      <span>Stock</span>
+      <span id="mob-low-stock-badge-container"></span>
+    </a>
+    <a href="#" class="mobile-nav-link" data-target="dashboard-section" id="mob-nav-dashboard">
+      <i data-lucide="bar-chart-2"></i>
+      <span>Logs</span>
+    </a>
+    <a href="#" class="mobile-nav-link" data-target="settings-section" id="mob-nav-settings">
+      <i data-lucide="settings"></i>
+      <span>Settings</span>
+    </a>
   </div>
 
   <!-- Lucide Icon CDN wrapper -->
